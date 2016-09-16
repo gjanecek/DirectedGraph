@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace DirectedGraph
 {
@@ -31,6 +32,183 @@ namespace DirectedGraph
                 return new Route("NO SUCH ROUTE", 0);
             }
         }
+
+        public int NewGetShortestRouteDistance(string route)
+        {
+            var routes = NewGetShortestRoute(route);
+            return routes.OrderBy(x => x.Distance).First().Distance;
+        }
+
+        public List<Route> NewGetShortestRoute(string route)
+        {
+            var stationRoutes = GetStations(route);
+            //var sameStartingEndingStation = stationRoutes.Distinct().Count() == 1;
+            var validRoutes = new List<List<MyRoute>>();
+            var possibleRoutes = new List<MyRoute>();
+            GetMyRoutes(validRoutes, possibleRoutes, stationRoutes.First(), stationRoutes.Last(),
+                true, false, false, false, true, 0, 0, 0);
+            return RoutesTo(validRoutes);
+        }
+
+
+        public string NewGetRouteTripsExactStops(string route, int exactStops)
+        {
+            var routes = GetRouteListExactStops(route, exactStops);
+            var sb = new StringBuilder();
+            for (int i = 0; i < routes.Count; i++)
+            {
+                sb.Append(routes[i].Path);
+                if (i != routes.Count - 1)
+                    sb.Append(",");
+            }
+            return sb.ToString();
+        }
+
+        public List<Route> GetRouteListExactStops(string route, int exactStops)
+        {
+            var stationRoutes = GetStations(route);
+            //var sameStartingEndingStation = stationRoutes.Distinct().Count() == 1;
+            var validRoutes = new List<List<MyRoute>>();
+            var possibleRoutes = new List<MyRoute>();
+            GetMyRoutes(validRoutes, possibleRoutes, stationRoutes.First(), stationRoutes.Last(),
+                true, false, false, true, false, 0, 0, exactStops - 1);
+            return RoutesTo(validRoutes);
+        }
+
+
+        public string NewGetRouteTripsMaximumStops(string route, int maximumStops)
+        {
+            var routes = GetRouteListMaximumStops(route, maximumStops);
+            return routes.ToString();
+            var sb = new StringBuilder();
+            for (int i = 0; i < routes.Count; i++)
+            {
+                sb.Append(routes[i].Path);
+                if (i != routes.Count - 1)
+                    sb.Append(",");
+            }
+            return sb.ToString();
+        }
+
+        public List<Route> GetRouteListMaximumStops(string route, int maximumStops)
+        {
+            var stationRoutes = GetStations(route);
+            //var sameStartingEndingStation = stationRoutes.Distinct().Count() == 1;
+            var validRoutes = new List<List<MyRoute>>();
+            var possibleRoutes = new List<MyRoute>();
+            GetMyRoutes(validRoutes, possibleRoutes, stationRoutes.First(), stationRoutes.Last(),
+                true, true, false, false, false, maximumStops, 0, 0);
+            return RoutesTo(validRoutes);
+        }
+
+        public string NewGetRoutesMaximumDistance(string route, int maximumDistance)
+        {
+            var routes = GetRouteListMaximumDistance(route, maximumDistance);
+            return routes.ToString();
+        }
+
+        public List<Route> GetRouteListMaximumDistance(string route, int maximumDistance)
+        {
+            var stationRoutes = GetStations(route);
+            var validRoutes = new List<List<MyRoute>>();
+            var possibleRoutes = new List<MyRoute>();
+            GetMyRoutes(validRoutes, possibleRoutes, stationRoutes.First(), stationRoutes.Last(),
+                true, false, true, false, false, 0, maximumDistance, 0);
+            return new Routes<Route>(validRoutes);
+            //return RoutesTo(validRoutes);
+        }
+
+        public List<Route> RoutesTo(List<List<MyRoute>> validRoutes)
+        {
+            var routes = new List<Route>();
+            foreach (var validRoute in validRoutes)
+            {
+                var newRoute = new Route();
+                int distance = 0;
+                foreach (var myRoute in validRoute)
+                {
+                    newRoute.Path += myRoute.StartingStation.Name;
+                    distance += myRoute.Distance;
+                }
+                newRoute.Path += validRoute.Last().EndingStation.Name;
+                routes.Add(new Route(newRoute.Path, distance));
+            }
+            return routes;
+        }
+
+        private void GetMyRoutes(List<List<MyRoute>> validRoutes, List<MyRoute> possibleRoutes, Station startingStation, Station EndingStation,
+                bool allowCycling, bool considerMaximumStops, bool considerMaximumDistance,
+                bool considerExactStops, bool findShortestRoute, 
+                int maximumStops, int maximumDistance, int exactStops)
+        {
+            if (findShortestRoute)
+                allowCycling = false;
+            if (considerMaximumStops && maximumStops <= 0)
+                return;
+            if (considerExactStops && exactStops < 0)
+                return;
+
+            var validNeighbors = startingStation.Neighbors;
+            if (!allowCycling)
+                validNeighbors = validNeighbors.Where(s => !possibleRoutes.Any(r => r.EndingStation == s.Station)).ToList();
+
+            foreach (var neighbor in validNeighbors)
+                {
+                var thisRoute = new MyRoute(startingStation, neighbor.Station, neighbor.Distance);
+                possibleRoutes.Add(thisRoute);
+
+                if (considerMaximumDistance && maximumDistance - neighbor.Distance < 0)
+                    continue;
+
+                if (neighbor.Station == EndingStation)
+                {
+                    if (findShortestRoute)
+                    {
+                            PersistRoutes(validRoutes, possibleRoutes);
+                            possibleRoutes.Remove(thisRoute);
+                            var t1 = RoutesTo(validRoutes);
+                            return;
+                    }
+                    else if (considerExactStops)
+                    {
+                        if (exactStops == 0)
+                        {
+                            PersistRoutes(validRoutes, possibleRoutes);
+                            possibleRoutes.Remove(thisRoute);
+                            var t2 = RoutesTo(validRoutes);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        PersistRoutes(validRoutes, possibleRoutes);
+                        possibleRoutes.Remove(thisRoute);
+                        var t3 = RoutesTo(validRoutes);
+                        return;
+                    }
+                }
+
+                GetMyRoutes(validRoutes, possibleRoutes, neighbor.Station, EndingStation,
+                    allowCycling, considerMaximumStops, considerMaximumDistance, considerExactStops,
+                    findShortestRoute, maximumStops - 1, maximumDistance - neighbor.Distance, exactStops - 1);
+                possibleRoutes.Remove(thisRoute);
+
+            }
+
+        }
+
+        private static void PersistRoutes(List<List<MyRoute>> validRoutes, List<MyRoute> possibleRoutes)
+        {
+            var persistedRoutes = new List<MyRoute>();
+            foreach (var route in possibleRoutes)
+            {
+                persistedRoutes.Add(new MyRoute(route.StartingStation, route.EndingStation, route.Distance));
+            }
+            validRoutes.Add(persistedRoutes);
+        }
+
+
+
 
         //public string GetRouteDistance(string route)
         //{

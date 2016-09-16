@@ -41,9 +41,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MyRoute.cs" />
     <Compile Include="Neighbor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Route.cs" />
+    <Compile Include="Routes.cs" />
     <Compile Include="Station.cs" />
     <Compile Include="StationsList.cs" />
   </ItemGroup>
